@@ -39,7 +39,15 @@ public class KartFuelSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Suma combustible al kart. Permite un valor personalizado o usa el valor por defecto.
+    /// Devuelve el porcentaje actual de combustible entre 0 y 1.
+    /// </summary>
+    public float GetFuelNormalized()
+    {
+        return currentFuel / maxFuel;
+    }
+
+    /// <summary>
+    /// Suma combustible al kart.
     /// </summary>
     public void AddFuel(float amount = -1f)
     {
@@ -47,7 +55,6 @@ public class KartFuelSystem : MonoBehaviour
 
         currentFuel = Mathf.Clamp(currentFuel + amountToAdd, 0f, maxFuel);
         
-        // Si el kart estaba detenido por falta de gasolina, reanudamos el estado
         if (currentFuel > 0f && isOutOfFuel)
         {
             isOutOfFuel = false;
@@ -77,7 +84,6 @@ public class KartFuelSystem : MonoBehaviour
     {
         isOutOfFuel = true;
 
-        // Frenar inmediatamente la inercia del Rigidbody para evitar que siga rodando
         if (rb != null)
         {
             rb.linearVelocity = Vector3.zero;
