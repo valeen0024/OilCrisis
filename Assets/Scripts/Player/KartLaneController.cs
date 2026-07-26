@@ -3,30 +3,50 @@ using UnityEngine;
 
 public class KartLaneController : MonoBehaviour
 {
-    [Header("Configuración de Carriles")]
-    [SerializeField] private float laneOffset = 3f;
-    [SerializeField] private float laneChangeSpeed = 10f;
+    [Header("Lane Configuration")]
+    [Tooltip("Horizontal distance between each lane center.")]
+    [SerializeField] private float laneOffset = 2f;
+    
+    [Tooltip("Speed at which the kart transitions horizontally between lanes.")]
+    [SerializeField] private float laneChangeSpeed = 15f;
+    
+    [Tooltip("Base forward speed of the kart.")]
     [SerializeField] private float baseForwardSpeed = 6f;
 
-    [Header("Control de Inicio")]
+    [Header("Lane Limits (4 Lanes Setup)")]
+    [Tooltip("Minimum lane index (most left lane).")]
+    [SerializeField] private int minLane = -1;
+    
+    [Tooltip("Maximum lane index (most right lane).")]
+    [SerializeField] private int maxLane = 2;
+
+    [Header("Start Control")]
+    [Tooltip("Toggles whether the kart is allowed to respond to input and move.")]
     public bool canMove = true;
 
-    [Header("Estado Actual")]
-    [SerializeField] private int currentLane = 0; // -1: Izquierda, 0: Centro, 1: Derecha
+    [Header("Current State")]
+    [Tooltip("Current lane index (-1, 0, 1, 2).")]
+    [SerializeField] private int currentLane = 0; 
 
     private float currentForwardSpeed;
     private Vector3 targetPosition;
     private KartFuelSystem fuelSystem;
     private bool isSliding = false;
 
-    void Start()
+    // Stores the initial X coordinate of the kart set in the Scene
+    private float startXPosition; 
+
+    private void Start()
     {
         fuelSystem = GetComponent<KartFuelSystem>();
         currentForwardSpeed = baseForwardSpeed;
         targetPosition = transform.position;
+
+        // Capture the initial X position as the origin for the reference lane (0)
+        startXPosition = transform.position.x;
     }
 
-    void Update()
+    private void Update()
     {
         if (!canMove) return;
 
@@ -35,50 +55,62 @@ public class KartLaneController : MonoBehaviour
         MoveKart();
     }
 
+    /// <summary>
+    /// Processes player horizontal movement input for 4 lanes.
+    /// </summary>
     private void HandleLaneInput()
     {
-        // Cambio de carril con A/D o Flechas (Solo si tiene gasolina)
         if (fuelSystem != null && fuelSystem.IsOutOfFuel) return;
 
+        // Move Left
         if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow))
         {
-            if (currentLane > -1) currentLane--;
+            if (currentLane > minLane) currentLane--;
         }
+        // Move Right (allows reaching the 4th lane at index 2)
         else if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow))
         {
-            if (currentLane < 1) currentLane++;
+            if (currentLane < maxLane) currentLane++;
         }
     }
 
+    /// <summary>
+    /// Decelerates the kart smoothly to a complete stop if it runs out of fuel.
+    /// </summary>
     private void UpdateSpeedBasedOnFuel()
     {
-        // Si se quedó sin gasolina, desacelera suavemente hasta llegar a 0
         if (fuelSystem != null && fuelSystem.IsOutOfFuel)
         {
             currentForwardSpeed = Mathf.MoveTowards(currentForwardSpeed, 0f, Time.deltaTime * 3f);
         }
     }
 
+    /// <summary>
+    /// Handles forward movement and lane changes using MoveTowards to guarantee precision.
+    /// </summary>
     private void MoveKart()
     {
-        // Calculamos la posición objetivo del carril en X
-        float targetX = currentLane * laneOffset;
+        // Calculate target X position based on the offset and current lane index
+        float targetX = startXPosition + (currentLane * laneOffset);
         
-        // Mantenemos Z avanzando con la velocidad actual
         Vector3 currentPos = transform.position;
-        float newX = Mathf.Lerp(currentPos.x, targetX, Time.deltaTime * laneChangeSpeed);
+
+        // MoveTowards snaps perfectly to targetX without floating-point offset drift
+        float newX = Mathf.MoveTowards(currentPos.x, targetX, laneChangeSpeed * Time.deltaTime);
+        
+        // Continuous forward progress
         float newZ = currentPos.z + (currentForwardSpeed * Time.deltaTime);
 
+        // Apply calculated position
         transform.position = new Vector3(newX, currentPos.y, newZ);
     }
 
     // ==========================================
-    // INTERACCIÓN CON ACEITE / BARRIL
+    // OIL / OBSTACLE INTERACTION
     // ==========================================
 
     private void OnTriggerEnter(Collider other)
     {
-        // Pisar Aceite
         if (other.CompareTag("Oil"))
         {
             if (fuelSystem != null)
@@ -96,6 +128,9 @@ public class KartLaneController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Triggers the temporary slow-down effect caused by oil slicks.
+    /// </summary>
     public void ApplyOilSlow(float duration)
     {
         if (!isSliding)
@@ -104,23 +139,23 @@ public class KartLaneController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Coroutine managing speed reduction and recovery duration when slipping on oil.
+    /// </summary>
     private IEnumerator OilSlowRoutine(float duration)
     {
         isSliding = true;
-        
-        // Reduce la velocidad a la mitad mientras esté bajo efecto del aceite
         currentForwardSpeed = baseForwardSpeed * 0.5f;
-        Debug.Log("¡Pisaste aceite! Velocidad reducida.");
+        Debug.Log("Slipped on oil! Speed reduced.");
 
         yield return new WaitForSeconds(duration);
 
-        // Solo restaura la velocidad base si aún le queda gasolina
         if (fuelSystem == null || !fuelSystem.IsOutOfFuel)
         {
             currentForwardSpeed = baseForwardSpeed;
         }
 
         isSliding = false;
-        Debug.Log("Velocidad normal recuperada.");
+        Debug.Log("Normal speed recovered.");
     }
 }

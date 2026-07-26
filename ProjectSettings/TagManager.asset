@@ -6,6 +6,7 @@ TagManager:
   tags:
   - Fuel
   - Start
+  - Oil
   layers:
   - Default
   - TransparentFX
