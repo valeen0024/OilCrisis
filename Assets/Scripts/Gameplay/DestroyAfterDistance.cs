@@ -1,35 +1,31 @@
+using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.tvOS;
 
 public class DestroyAfterDistance : MonoBehaviour
 {
     [Header("Settings")]
-    [Tooltip("Reference to the player/kart transform.")]
-    [SerializeField] private Transform playerTransform;
-
-    [Tooltip("Distance behind the player at which this object will be destroyed.")]
+    [Tooltip("Distance behind the kart at which the object will be destroyed.")]
     [SerializeField] private float destroyDistanceBehind = 15f;
-
-    private void Start()
-    {
-        // Automatically find the player by tag if not assigned in Inspector
-        if (playerTransform == null)
-        {
-            GameObject player = GameObject.FindGameObjectWithTag("Player");
-            if (player != null)
-            {
-                playerTransform = player.transform;
-            }
-        }
-    }
 
     private void Update()
     {
-        if (playerTransform == null) return;
 
-        // Check if the obstacle is far enough behind the player's Z position
-        if (playerTransform.position.z - transform.position.z > destroyDistanceBehind)
+
+        //Items are removed from the track when the CPU's turn ends.
+        if (GameManager.Instance.gameState == GameManager.GameState.CPUTurn)
         {
-            Destroy(gameObject);
+            // Find the CPU kart using the Tag
+            GameObject cpuKart = GameObject.FindGameObjectWithTag("CPU");
+
+            if (cpuKart != null)
+            {
+                // If the CPU has already left an obstacle or decoration far behind, it is removed.
+                if (cpuKart.transform.position.z - transform.position.z > destroyDistanceBehind)
+                {
+                    Destroy(gameObject);
+                }
+            }
         }
     }
 }
