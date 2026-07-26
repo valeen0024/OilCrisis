@@ -2,30 +2,31 @@ using UnityEngine;
 
 public class KartFuelSystem : MonoBehaviour
 {
-    [Header("Configuración de Combustible")]
+    [Header("Fuel Configuration")]
     public float currentFuel = 100f;
     public float maxFuel = 100f;
-    public float fuelConsumptionRate = 10f; // Cantidad consumida por segundo
-    
-    [Header("Recompensas y Penalizaciones")]
-    public float fuelFromBarrel = 25f;      // Recompensa base
-    public float fuelLostFromOil = 15f;     // Penalización por aceite
+    public float fuelConsumptionRate = 10f;
+
+    [Header("Rewards & Penalties")]
+    public float fuelFromBarrel = 25f;
+    public float fuelLostFromOil = 15f;
 
     private bool isOutOfFuel = false;
-    private Rigidbody rb;
+
+    private KartLaneController kartController;
 
     public bool IsOutOfFuel => isOutOfFuel;
 
     void Start()
     {
-        rb = GetComponent<Rigidbody>();
+        kartController = GetComponent<KartLaneController>();
     }
 
     void Update()
     {
-        if (isOutOfFuel) return;
+        if (isOutOfFuel)
+            return;
 
-        // Consumo constante
         if (currentFuel > 0f)
         {
             currentFuel -= fuelConsumptionRate * Time.deltaTime;
@@ -39,7 +40,7 @@ public class KartFuelSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Devuelve el porcentaje actual de combustible entre 0 y 1.
+    /// Returns the current fuel percentage between 0 and 1.
     /// </summary>
     public float GetFuelNormalized()
     {
@@ -47,32 +48,39 @@ public class KartFuelSystem : MonoBehaviour
     }
 
     /// <summary>
-    /// Suma combustible al kart.
+    /// Adds fuel to the kart.
     /// </summary>
     public void AddFuel(float amount = -1f)
     {
         float amountToAdd = (amount < 0f) ? fuelFromBarrel : amount;
 
         currentFuel = Mathf.Clamp(currentFuel + amountToAdd, 0f, maxFuel);
-        
+
         if (currentFuel > 0f && isOutOfFuel)
         {
             isOutOfFuel = false;
-            Debug.Log("¡Gasolina recargada! Kart reactivado.");
+
+            if (kartController != null)
+            {
+                kartController.canMove = true;
+            }
+
+            Debug.Log("Fuel restored! Kart reactivated.");
         }
         else
         {
-            Debug.Log($"¡Combustible recargado (+{amountToAdd})! Total: {currentFuel}");
+            Debug.Log($"Fuel refilled (+{amountToAdd})! Total: {currentFuel}");
         }
     }
 
     /// <summary>
-    /// Resta combustible por la mancha de aceite.
+    /// Reduces fuel when driving over oil.
     /// </summary>
     public void ReduceFuelFromOil()
     {
         currentFuel = Mathf.Clamp(currentFuel - fuelLostFromOil, 0f, maxFuel);
-        Debug.Log($"¡Pierdes gasolina por el aceite! Total: {currentFuel}");
+
+        Debug.Log($"Fuel lost because of oil! Total: {currentFuel}");
 
         if (currentFuel <= 0f && !isOutOfFuel)
         {
@@ -84,12 +92,11 @@ public class KartFuelSystem : MonoBehaviour
     {
         isOutOfFuel = true;
 
-        if (rb != null)
+        if (kartController != null)
         {
-            rb.linearVelocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
+            kartController.canMove = false;
         }
 
-        Debug.Log("¡Se acabó la gasolina! El kart se detiene.");
+        Debug.Log("Out of fuel! Kart stopped.");
     }
 }

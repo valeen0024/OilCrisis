@@ -22,6 +22,11 @@ public class TrafficLightManager : MonoBehaviour
 
     void Start()
     {
+        Debug.Log("================================");
+        Debug.Log("PLAYER SELECTION: " + GameData.PlayerSelection);
+        Debug.Log("CPU SELECTION: " + GameData.CpuSelection);
+        Debug.Log("================================");
+
         // Apagamos todas las luces al iniciar
         UpdateAllLights(allOffSprite);
         StartCoroutine(StartRaceSequence());

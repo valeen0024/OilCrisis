@@ -158,13 +158,17 @@ public class CharacterSelectionManager : MonoBehaviour
         }
 
         cpuBorder.position = colorPoints[cpuSelection].position;
-        
+
         lockOverlays[cpuSelection].SetActive(true);
 
         GameData.PlayerSelection = playerSelection;
         GameData.CpuSelection = cpuSelection;
 
+        Debug.Log("Llegué al final de la Coroutine");
+
         yield return new WaitForSeconds(0.8f);
+
+        Debug.Log("Voy a cargar Gameplay");
 
         SceneManager.LoadScene("Gameplay");
     }
