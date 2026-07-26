@@ -1,220 +1,203 @@
-﻿using UnityEngine;
-using UnityEngine.SceneManagement;
+﻿using NUnit.Framework;
 using System.Collections;
-
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using static UnityEngine.InputManagerEntry;
 
 public class GameManager : MonoBehaviour
 {
-    // Static instance to implement the Singleton pattern and access the GameManager from any script
     public static GameManager Instance;
 
-    // Definition of the possible states in which the game can be
+    [Header("Traffic Light")]
+    public TrafficLightManager trafficLightManager;
+
     public enum GameState
     {
-        Waiting,    // Definition of the possible states in which the game can be
-        PlayerTurn, // Active player's turn
-        CPUTurn,    // Artificial Intelligence's active turn
-        Finished    // Game over
+        Waiting,
+        PlayerTurn,
+        CPUTurn,
+        Finished
     }
 
-    [Header("General State of the Game")]
-    public GameState gameState; 
-    public bool isGameOver;     
-    public bool playerWon;      
+    private List<GameObject> fuelBarrels = new List<GameObject>();
+
+    public GameState gameState;
+    public bool isGameOver;
+    public bool playerWon;
     public string winnerName;
 
-    // Variables hidden in the Inspector where the 'DistanceTracker' scripts store the final distance traveled
     [HideInInspector]
     public float finalPlayerDistance;
 
     [HideInInspector]
     public float finalCPUDistance;
 
-    [Header("Vehicles (References)")]
-    // Complete player kart object
-    public GameObject playerKart;
-
-    // Complete CPU kart object
-    public GameObject cpuKart;
-
-
-    // Executes before Start. Implements the Singleton pattern to ensure a single instance.
+    //Initializes the Singleton pattern to ensure only one GameManager exists in the scene.
     private void Awake()
     {
         if (Instance == null)
         {
-            Instance = this; // If a GameManager does not exist, this one is assigned as the main one.
+            Instance = this;
         }
         else
         {
-            Destroy(gameObject); // If another one already exists in the scene, destroy this duplicate
+            Destroy(gameObject);
         }
     }
 
-    // Executes on the first frame. Starts the initial game logic.
-    //private void Start()
-    //{
-    //    StartGame();
+    //Called at the start of the game.Starts the match and finds the fuel barrels.
+    private void Start()
+    {
+        StartGame();
+        FindFuelBarrels();
+    }
+    //Finds all objects with the "Fuel" tag in the scene and stores them in a list.
+    private void FindFuelBarrels()
+    {
+        GameObject[] foundBarrels = GameObject.FindGameObjectsWithTag("Fuel");
+        foreach (GameObject barrel in foundBarrels)
+        {
+            fuelBarrels.Add(barrel);
+        }
+    }
 
-    //    Debug.Log("=== GAME STARTED ===");
-    //    Debug.Log("Game State: " + gameState);
-    //}
-
-    // Resets the variables to their initial values ​​and assigns the first turn to the player
+    //Resets game variables and starts the traffic light sequence for the player's turn.
     public void StartGame()
     {
-        gameState = GameState.PlayerTurn;
+        gameState = GameState.Waiting;
         isGameOver = false;
         playerWon = false;
         winnerName = "";
         finalPlayerDistance = 0f;
         finalCPUDistance = 0f;
 
-        // Ensure both vehicles are visible when starting a new game
-        if (playerKart != null)
+        if (trafficLightManager != null)
         {
-            playerKart.SetActive(true);
+            trafficLightManager.StartPlayerTurnSequence();
         }
-
-        if (cpuKart != null)
-        {
-            cpuKart.SetActive(true);
-        }
-
-        Debug.Log("Game started. Player turn.");
     }
 
-    // Ends the player's turn and begins the switch to the CPU's turn.
+    //Reactivates all saved fuel barrels in the list for the next turn.
+    public void RespawnFuelBarrels()
+    {
+        foreach (GameObject barrel in fuelBarrels)
+        {
+            if (barrel != null)
+            {
+                barrel.SetActive(true);
+            }
+        }
+    }
+
+    //Checks if it is the player's turn and starts the transition coroutine to the CPU.
     public void EndPlayerTurn()
     {
-        // Security validation: proceed only if it is currently the player's turn
-        if (gameState != GameState.PlayerTurn)
-            return;
+        if (gameState != GameState.PlayerTurn) return;
 
-        // Starts the coroutine that handles the delay before the CPU plays
-        StartCoroutine(StartCPUTurnAfterDelay());
+        // Instead of an abrupt transition, we initiate the cinematic shift-change sequence.
+        StartCoroutine(TransitionToCPUTurn());
     }
 
-    // Hides the player's kart object in the scene
-    public void HidePlayerKart()
+    private IEnumerator TransitionToCPUTurn()
     {
-        if (playerKart != null)
-        {
-            playerKart.SetActive(false);
-            Debug.Log("Player kart hidden.");
-        }
-    }
-
-    // Displays the player's kart object in the scene
-    public void ShowPlayerKart()
-    {
-        if (playerKart != null)
-        {
-            playerKart.SetActive(true);
-            Debug.Log("Player kart shown.");
-        }
-    }
-
-    // Coroutine that generates a brief pause between the player's turn and the CPU's turn
-    private IEnumerator StartCPUTurnAfterDelay()
-    {
-        // Switches to standby mode to stop the movement of both vehicles
+        // Change the status to waiting
         gameState = GameState.Waiting;
 
-        Debug.Log("Player turn finished.");
-        Debug.Log("CPU turn starts in 3 seconds.");
+        // Detiene al jugador de inmediato
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+        if (player != null)
+        {
+            // Turn off lane control.s
+            if (player.TryGetComponent<KartLaneController>(out var laneCtrl))
+            {
+                laneCtrl.canMove = false;
+            }
+            // Disable physics-based movement if it is being used.
+            if (player.TryGetComponent<KartMovement>(out var kartMov))
+            {
+                kartMov.enabled = false;
+            }
+            // Halts all speed and freezes physics.
+            if (player.TryGetComponent<Rigidbody>(out var rb))
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+                rb.isKinematic = true;
+            }
+        }
 
-        // Pauses the execution of this method for 3 real-time game seconds
+        Debug.Log("¡Turno terminado! El auto se ha detenido. Esperando 3 segundos...");
+
+        // 3-second wait before changing turns
         yield return new WaitForSeconds(3f);
 
-        // Hides the player's kart at the end of their turn to make way for the CPU's kart.
-        HidePlayerKart();
-
-        // Officially changes the state to the CPU's turn
-        gameState = GameState.CPUTurn;
-
-        Debug.Log("CPU turn begins.");
-    }
-
-    // Hides the CPU kart object in the scene
-    public void HideCPUKart()
-    {
-        if (cpuKart != null)
+        //Hides the player
+        if (player != null)
         {
-            cpuKart.SetActive(false);
-            Debug.Log("CPU kart hidden.");
+            player.SetActive(false);
+            Debug.Log("Kart del jugador oculto.");
+        }
+
+        // Point the camera lens at the CPU.
+        CameraFollow cam = Camera.main.GetComponent<CameraFollow>();
+        GameObject cpu = GameObject.FindGameObjectWithTag("CPU");
+
+        if (cam != null && cpu != null)
+        {
+            cam.SetTarget(cpu.transform);
+            Debug.Log("Cámara cambiando al kart de la CPU.");
+        }
+
+        // Reset the fuel barrels.
+        RespawnFuelBarrels();
+
+        // The CPU traffic light starts up.
+        if (trafficLightManager != null)
+        {
+            trafficLightManager.StartCPUTurnSequence();
         }
     }
-
-    // Displays the CPU kart object in the scene
-    public void ShowCPUKart()
-    {
-        if (cpuKart != null)
-        {
-            cpuKart.SetActive(true);
-            Debug.Log("CPU kart shown.");
-        }
-    }
-
-    // Ends the CPU's turn and proceeds to finish the race
+    // Ends the CPU's turn and calls the function to end the game.
     public void EndCPUTurn()
     {
-        // Security validation: proceed only if it is currently the CPU's turn
-        if (gameState != GameState.CPUTurn)
-            return;
-
+        if (gameState != GameState.CPUTurn) return;
         Debug.Log("CPU turn finished.");
-
-        // Finaliza el juego por completo
         FinishGame();
     }
 
-    // Called externally when the player runs out of fuel
+    //The turn ends when the player runs out of fuel.
+
     public void PlayerOutOfFuel()
     {
-        Debug.Log(
-            "Player ran out of fuel at " +
-            finalPlayerDistance +
-            " yards."
-        );
-
         EndPlayerTurn();
     }
+    // The turn ends when the CPU runs out of fuel.
 
-    // It is called externally when the CPU runs out of fuel.
     public void CPUOutOfFuel()
     {
-        Debug.Log(
-            "CPU ran out of fuel at " +
-            finalCPUDistance +
-            " yards."
-        );
-
         EndCPUTurn();
     }
-
-    // Changes the game state to 'Finished' and triggers the determination of the winner
+    // Changes the game state to finished and runs the check to see who won.
     public void FinishGame()
     {
-        // If the game had already ended, the logic is not executed again.
-        if (isGameOver)
-            return;
-
+        if (isGameOver) return;
         isGameOver = true;
         gameState = GameState.Finished;
-
-        // Compares the saved results to declare a winner
         CheckWinner();
 
         Debug.Log(
             "Game finished. Winner: " +
             winnerName
         );
+
     }
 
-    // Compares the final recorded distances of both participants to determine who won
+    // Compares the final distance of the player and the CPU to declare a winner or a draw.
+
     public void CheckWinner()
     {
+
         Debug.Log(
             "Comparing distances - Player: " +
             finalPlayerDistance +
@@ -222,19 +205,16 @@ public class GameManager : MonoBehaviour
             finalCPUDistance
         );
 
-        // Player Victory
         if (finalPlayerDistance > finalCPUDistance)
         {
             winnerName = "Player";
             playerWon = true;
         }
-        // CPU Victory
         else if (finalCPUDistance > finalPlayerDistance)
         {
             winnerName = "CPU";
             playerWon = false;
         }
-        // Draw
         else
         {
             winnerName = "Draw";
@@ -242,19 +222,15 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    // Reloads the current scene to restart the race from scratch
+    // Reloads the current scene, restarting the race from scratch.
     public void RestartGame()
     {
-        SceneManager.LoadScene(
-            SceneManager.GetActiveScene().name
-        );
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
-    // Loads the main menu scene to exit game mode
+    //Loads the Main Menu scene.
     public void ReturnToMenu()
     {
-        SceneManager.LoadScene(
-            "MainMenu"
-        );
+        SceneManager.LoadScene("MainMenu");
     }
 }

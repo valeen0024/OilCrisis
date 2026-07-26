@@ -1,3 +1,4 @@
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class FuelBarrel : MonoBehaviour
@@ -5,32 +6,57 @@ public class FuelBarrel : MonoBehaviour
     [Header("Configuración del Barril")]
     [SerializeField] private float fuelAmount = 25f;
 
+
     [Header("Audio")]
-    [Tooltip("Clip de sonido al chocar con el barril.")]
+    [Tooltip("Clip de sonido al recoger el barril.")]
     [SerializeField] private AudioClip impactSound;
 
-    [Tooltip("Volumen del efecto de sonido (0.0 a 1.0).")]
+
+    [Tooltip("Volumen del efecto de sonido.")]
     [Range(0f, 1f)]
     [SerializeField] private float soundVolume = 1f;
 
+    //Detects collision via trigger with other objects.
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player"))
+        //Checks if the colliding object belongs to the Player or CPU.
+        if (
+            other.CompareTag("Player")
+            ||
+            other.CompareTag("CPU")
+        )
         {
-            // 1. Recargar combustible si el jugador tiene el sistema de gasolina
-            if (other.TryGetComponent<KartFuelSystem>(out KartFuelSystem fuelSystem))
+            //Attempts to get the kart's fuel system component.
+            if (
+                other.TryGetComponent<KartFuelSystem>(
+                    out KartFuelSystem fuelSystem
+                )
+            )
             {
-                fuelSystem.AddFuel(fuelAmount);
+                //Increases the kart's fuel using the defined amount.
+                fuelSystem.AddFuel(
+                    fuelAmount
+                );
             }
 
-            // 2. Reproducir el sonido en la posición del impacto (no se corta al destruir el barril)
-            if (impactSound != null)
+
+            if (
+                //Plays the impact sound at the barrel's position if assigned.
+                impactSound
+                !=
+                null
+            )
             {
-                AudioSource.PlayClipAtPoint(impactSound, transform.position, soundVolume);
+                AudioSource.PlayClipAtPoint(
+                    impactSound,
+                    transform.position,
+                    soundVolume
+                );
             }
 
-            // 3. Destruir el barril recolectado
-            Destroy(gameObject);
+
+            //Deactivates the object to allow subsequent respawning
+            gameObject.SetActive(false);
         }
     }
 }
