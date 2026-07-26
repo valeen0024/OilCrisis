@@ -1,73 +1,100 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.Device;
+
 
 public class TrafficLightManager : MonoBehaviour
 {
-    [Header("Referencias del Kart")]
-    public KartLaneController kartController;
+    [Header("Controllers")]
+    public KartLaneController playerKartController;
+    public CPUController cpuController;
 
-    [Header("Referencias de los Semáforos en Escena")]
-    // Arrastra aquí los objetos "semaforo" y "semaforo (1)" de tu Jerarquía
-    public SpriteRenderer[] trafficLightRenderers; 
+    [Header("Traffic lights\r\n")]
+    public SpriteRenderer[] trafficLightRenderers;
 
-    [Header("Sprites de las Luces (PNGs)")]
-    public Sprite allOffSprite;    // Imagen con todo apagado
-    public Sprite redLightSprite;  // Imagen con luz roja encendida
-    public Sprite yellowLightSprite; // Imagen con luz amarilla encendida
-    public Sprite greenLightSprite; // Imagen con luz verde encendida
+    [Header("Left Traffic Light Sprites")]
+    public Sprite leftAllOffSprite;
+    public Sprite leftRedSprite;
+    public Sprite leftYellowSprite;
+    public Sprite leftGreenSprite;
 
-    [Header("Tiempos de Secuencia")]
-    public float startDelay = 1.0f;
-    public float stepInterval = 1.0f;
+    [Header("Right Traffic Light Sprites")]
+    public Sprite rightAllOffSprite;
+    public Sprite rightRedSprite;
+    public Sprite rightYellowSprite;
+    public Sprite rightGreenSprite;
 
-    void Start()
+    [Header("Time")]
+    public float startDelay = 1f;
+    public float stepInterval = 1f;
+
+    private bool isPlayingSequence = false;
+
+    //Starts the countdown for the player's turn.
+    public void StartPlayerTurnSequence()
     {
-        Debug.Log("================================");
-        Debug.Log("PLAYER SELECTION: " + GameData.PlayerSelection);
-        Debug.Log("CPU SELECTION: " + GameData.CpuSelection);
-        Debug.Log("================================");
 
-        // Apagamos todas las luces al iniciar
-        UpdateAllLights(allOffSprite);
-        StartCoroutine(StartRaceSequence());
+
+        if (isPlayingSequence) return;
+        StartCoroutine(StartRaceSequence(GameManager.GameState.PlayerTurn));
     }
-
-    // Función auxiliar para cambiar el sprite en todos los semáforos a la vez
-    void UpdateAllLights(Sprite newSprite)
+    //Starts the countdown for the CPU's turn.
+    public void StartCPUTurnSequence()
     {
-        foreach (SpriteRenderer renderer in trafficLightRenderers)
-        {
-            if (renderer != null && newSprite != null)
-            {
-                renderer.sprite = newSprite;
-            }
-        }
+        if (isPlayingSequence) return;
+        StartCoroutine(StartRaceSequence(GameManager.GameState.CPUTurn));
     }
-
-    IEnumerator StartRaceSequence()
+    //Main coroutine that handles the timing and visual change of the lights.
+    private IEnumerator StartRaceSequence(GameManager.GameState targetTurn)
     {
-        if (kartController != null) kartController.canMove = false;
+        isPlayingSequence = true;
+
+        // Lock both before the countdown
+        if (playerKartController != null) playerKartController.canMove = false;
+        if (cpuController != null) cpuController.canMove = false;
 
         yield return new WaitForSeconds(startDelay);
 
-        // 🔴 LUZ ROJA
-        Debug.Log("🔴 ROJO");
-        UpdateAllLights(redLightSprite);
+        UpdateLights(leftRedSprite, rightRedSprite);
+        Debug.Log("RED");
         yield return new WaitForSeconds(stepInterval);
 
-        // 🟡 LUZ AMARILLA
-        Debug.Log("🟡 AMARILLO");
-        UpdateAllLights(yellowLightSprite);
+        UpdateLights(leftYellowSprite, rightYellowSprite);
+        Debug.Log("YELLOW");
         yield return new WaitForSeconds(stepInterval);
 
-        // 🟢 LUZ VERDE
-        Debug.Log("🟢 VERDE - ¡YA!");
-        UpdateAllLights(greenLightSprite);
+        UpdateLights(leftGreenSprite, rightGreenSprite);
+        Debug.Log("GREEN");
 
-        // Arranca el kart
-        if (kartController != null)
+        // Changes the official turn
+        GameManager.Instance.gameState = targetTurn;
+
+        // Activate ONLY the one that applies
+        if (targetTurn == GameManager.GameState.PlayerTurn)
         {
-            kartController.canMove = true;
+            if (playerKartController != null) playerKartController.canMove = true;
+            if (cpuController != null) cpuController.canMove = false;
+        }
+        else if (targetTurn == GameManager.GameState.CPUTurn)
+        {
+            if (cpuController != null) cpuController.canMove = true;
+            if (playerKartController != null) playerKartController.canMove = false;
+        }
+
+        isPlayingSequence = false;
+    }
+
+    //Helper method that changes the current sprite of all traffic lights on the screen.
+    private void UpdateLights(Sprite leftSprite, Sprite rightSprite)
+    {
+        if (trafficLightRenderers.Length > 0 && trafficLightRenderers[0] != null && leftSprite != null)
+        {
+            trafficLightRenderers[0].sprite = leftSprite;
+        }
+
+        if (trafficLightRenderers.Length > 1 && trafficLightRenderers[1] != null && rightSprite != null)
+        {
+            trafficLightRenderers[1].sprite = rightSprite;
         }
     }
 }

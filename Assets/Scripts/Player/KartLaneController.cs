@@ -22,7 +22,7 @@ public class KartLaneController : MonoBehaviour
 
     [Header("Start Control")]
     [Tooltip("Toggles whether the kart is allowed to respond to input and move.")]
-    public bool canMove = true;
+    public bool canMove = false;
 
     [Header("Current State")]
     [Tooltip("Current lane index (-1, 0, 1, 2).")]
@@ -32,6 +32,7 @@ public class KartLaneController : MonoBehaviour
     private Vector3 targetPosition;
     private KartFuelSystem fuelSystem;
     private bool isSliding = false;
+    public KartLaneController kartController;
 
     // Stores the initial X coordinate of the kart set in the Scene
     private float startXPosition; 
