@@ -1,5 +1,4 @@
-﻿using NUnit.Framework;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -11,6 +10,15 @@ public class GameManager : MonoBehaviour
 
     [Header("Traffic Light")]
     public TrafficLightManager trafficLightManager;
+
+    [Header("UI")]
+    [SerializeField] private GameObject uiInstructions;
+    [SerializeField] private GameObject uiPlay;
+    [SerializeField] private GameObject uiWin;
+
+    [SerializeField]
+    [Range(1f, 5f)]
+    private float instructionsTime = 3f;
 
     public enum GameState
     {
@@ -49,9 +57,36 @@ public class GameManager : MonoBehaviour
     //Called at the start of the game.Starts the match and finds the fuel barrels.
     private void Start()
     {
-        StartGame();
         FindFuelBarrels();
+
+        StartCoroutine(ShowInstructionsRoutine());
     }
+
+    private IEnumerator ShowInstructionsRoutine()
+    {
+        gameState = GameState.Waiting;
+
+        if (uiPlay != null)
+            uiPlay.SetActive(false);
+
+        if (uiWin != null)
+            uiWin.SetActive(false);
+
+        if (uiInstructions != null)
+            uiInstructions.SetActive(true);
+
+        yield return new WaitForSeconds(instructionsTime);
+
+        if (uiInstructions != null)
+            uiInstructions.SetActive(false);
+
+        if (uiPlay != null)
+            uiPlay.SetActive(true);
+
+        StartGame();
+    }
+
+
     //Finds all objects with the "Fuel" tag in the scene and stores them in a list.
     private void FindFuelBarrels()
     {
@@ -104,42 +139,49 @@ public class GameManager : MonoBehaviour
         // Change the status to waiting
         gameState = GameState.Waiting;
 
-        // Detiene al jugador de inmediato
+        // Stop the player immediately
         GameObject player = GameObject.FindGameObjectWithTag("Player");
+
         if (player != null)
         {
-            // Turn off lane control.s
+            // Turn off lane control
             if (player.TryGetComponent<KartLaneController>(out var laneCtrl))
             {
                 laneCtrl.canMove = false;
             }
-            // Disable physics-based movement if it is being used.
+
+            // Disable physics-based movement
             if (player.TryGetComponent<KartMovement>(out var kartMov))
             {
                 kartMov.enabled = false;
             }
-            // Halts all speed and freezes physics.
+
+            // Stop the Rigidbody and freeze physics
             if (player.TryGetComponent<Rigidbody>(out var rb))
             {
-                rb.linearVelocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
+                if (!rb.isKinematic)
+                {
+                    rb.linearVelocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                }
+
                 rb.isKinematic = true;
             }
-        }
+        }   // <-- ESTA LLAVE TE FALTABA
 
         Debug.Log("¡Turno terminado! El auto se ha detenido. Esperando 3 segundos...");
 
         // 3-second wait before changing turns
         yield return new WaitForSeconds(3f);
 
-        //Hides the player
+        // Hide the player
         if (player != null)
         {
             player.SetActive(false);
             Debug.Log("Kart del jugador oculto.");
         }
 
-        // Point the camera lens at the CPU.
+        // Point the camera at the CPU
         CameraFollow cam = Camera.main.GetComponent<CameraFollow>();
         GameObject cpu = GameObject.FindGameObjectWithTag("CPU");
 
@@ -149,10 +191,10 @@ public class GameManager : MonoBehaviour
             Debug.Log("Cámara cambiando al kart de la CPU.");
         }
 
-        // Reset the fuel barrels.
+        // Reset the fuel barrels
         RespawnFuelBarrels();
 
-        // The CPU traffic light starts up.
+        // Start the CPU traffic light
         if (trafficLightManager != null)
         {
             trafficLightManager.StartCPUTurnSequence();

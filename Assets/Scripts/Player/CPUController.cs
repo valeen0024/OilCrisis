@@ -57,8 +57,14 @@ public class CPUController : MonoBehaviour
     private KartFuelSystem fuelSystem;
     private bool isSliding = false;
 
+    // Initial transform
+    private Vector3 startPosition;
+    private Quaternion startRotation;
     private void Start()
     {
+        startPosition = transform.position;
+        startRotation = transform.rotation; 
+
         fuelSystem = GetComponent<KartFuelSystem>();
 
         // Save the X position where this kart starts.
@@ -322,6 +328,32 @@ public class CPUController : MonoBehaviour
         isSliding = false;
         Debug.Log("CPU speed recovered.");
     }
+    public void ResetForNewTurn()
+    {
+        StopAllCoroutines();
 
-    
+        // Disable movement until the traffic light enables it again
+        canMove = false;
+
+        // Restore the original position and rotation
+        transform.position = startPosition;
+        transform.rotation = startRotation;
+
+        // Reset lane information
+        currentLane = Mathf.Clamp(startLane, minLane, maxLane);
+        targetLane = currentLane;
+
+        // Reset movement values
+        currentForwardSpeed = cpuSpeed;
+        laneChangeTimer = laneChangeInterval;
+
+        // Clear oil effect
+        isSliding = false;
+
+        // Restore fuel
+        if (fuelSystem != null)
+        {
+            fuelSystem.currentFuel = fuelSystem.maxFuel;
+        }
+    }
 }
