@@ -40,8 +40,12 @@ public class MainMenuManager : MonoBehaviour
 
     public void ExitGame()
     {
-        Debug.Log("Closing game...");
+        Debug.Log("Cerrando juego...");
 
         Application.Quit();
+
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#endif
     }
 }

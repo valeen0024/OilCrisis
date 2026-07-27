@@ -131,6 +131,18 @@ public class CharacterSelectionManager : MonoBehaviour
 
         StartCoroutine(CPUSelectionRoutine());
     }
+
+    public void RandomSelection()
+    {
+        if (playerConfirmed)
+            return;
+
+        currentSelection = Random.Range(0, colorPoints.Length);
+
+        UpdatePlayerBorder();
+
+        ConfirmSelection();
+    }
     private IEnumerator CPUSelectionRoutine()
     {
         do
@@ -171,5 +183,10 @@ public class CharacterSelectionManager : MonoBehaviour
         Debug.Log("Voy a cargar Gameplay");
 
         SceneManager.LoadScene("Gameplay");
+    }
+
+    public void ExitToMainMenu()
+    {
+        SceneManager.LoadScene("MainMenu");
     }
 }

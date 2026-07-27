@@ -5,38 +5,38 @@ using UnityEngine.InputSystem;
 [RequireComponent(typeof(Rigidbody))]
 public class KartMovement : MonoBehaviour
 {
-    [Header("Configuración de Movimiento")]
-    [SerializeField] private float speed = 35f;
-    [SerializeField] private float turnSpeed = 80f;
-    [SerializeField] private float maxSpeed = 20f;
+    [Header("Movement Settings")]
+    [SerializeField] private float speed = 70f;
+    [SerializeField] private float turnSpeed = 120f;
+    [SerializeField] private float maxSpeed = 35f;
 
     private Rigidbody rb;
     private KartFuelSystem fuelSystem;
 
     private float moveInput;
     private float turnInput;
-    
-    // Control para el estado de derrape / aceite
+
+    // Oil effect state
     private bool isSliding = false;
     private float baseSpeed;
     private float baseMaxSpeed;
 
-    void Start()
+    private void Start()
     {
         rb = GetComponent<Rigidbody>();
         fuelSystem = GetComponent<KartFuelSystem>();
 
-        // Bajar el centro de masa previene que el kart se vuelque en curvas cerradas
+        // Lower the center of mass to improve stability while turning
         rb.centerOfMass = new Vector3(0f, -0.5f, 0f);
 
-        // Guardamos las estadísticas base al arrancar
+        // Store the original movement values
         baseSpeed = speed;
         baseMaxSpeed = maxSpeed;
     }
 
-    void Update()
+    private void Update()
     {
-        // Si no hay gasolina, reseteamos el input
+        // Stop reading input if the kart is out of fuel
         if (fuelSystem != null && fuelSystem.IsOutOfFuel)
         {
             moveInput = 0f;
@@ -44,25 +44,41 @@ public class KartMovement : MonoBehaviour
             return;
         }
 
-        // Lectura usando el Input System
+        // Read keyboard input using the Input System
         if (Keyboard.current != null)
         {
             moveInput = 0f;
-            if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed) moveInput += 1f;
-            if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed) moveInput -= 1f;
+
+            if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed)
+                moveInput += 1f;
+
+            if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed)
+                moveInput -= 1f;
 
             turnInput = 0f;
-            if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed) turnInput += 1f;
-            if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed) turnInput -= 1f;
+
+            if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed)
+                turnInput += 1f;
+
+            if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed)
+                turnInput -= 1f;
         }
     }
 
-    void FixedUpdate()
+    private void FixedUpdate()
     {
-        // Si se acabó el combustible, forzamos la desaceleración inmediata
-        if (fuelSystem != null && fuelSystem.IsOutOfFuel) 
+        // Ignore physics updates while the Rigidbody is kinematic
+        if (rb.isKinematic)
+            return;
+
+        // Gradually stop the kart when fuel runs out
+        if (fuelSystem != null && fuelSystem.IsOutOfFuel)
         {
-            rb.linearVelocity = Vector3.MoveTowards(rb.linearVelocity, Vector3.zero, Time.fixedDeltaTime * 10f);
+            rb.linearVelocity = Vector3.MoveTowards(
+                rb.linearVelocity,
+                Vector3.zero,
+                Time.fixedDeltaTime * 10f);
+
             return;
         }
 
@@ -74,15 +90,15 @@ public class KartMovement : MonoBehaviour
     {
         float currentForwardSpeed = transform.InverseTransformDirection(rb.linearVelocity).z;
 
-        // Aceleración hacia adelante
+        // Forward acceleration
         if (moveInput > 0f && currentForwardSpeed < maxSpeed)
         {
-            rb.AddForce(transform.forward * moveInput * speed, ForceMode.Force);
+            rb.AddForce(transform.forward * moveInput * speed, ForceMode.Acceleration);
         }
-        // Reversa
+        // Reverse movement
         else if (moveInput < 0f && currentForwardSpeed > -maxSpeed / 2f)
         {
-            rb.AddForce(transform.forward * moveInput * speed, ForceMode.Force);
+            rb.AddForce(transform.forward * moveInput * speed, ForceMode.Acceleration);
         }
     }
 
@@ -91,24 +107,23 @@ public class KartMovement : MonoBehaviour
         if (rb.linearVelocity.magnitude > 0.1f)
         {
             float currentForwardSpeed = transform.InverseTransformDirection(rb.linearVelocity).z;
-            
-            // Inversión limpia de la dirección de giro si va en reversa
+
+            // Reverse steering direction while driving backwards
             float directionModifier = currentForwardSpeed < -0.1f ? -1f : 1f;
-            
+
             float turn = turnInput * turnSpeed * directionModifier * Time.fixedDeltaTime;
             Quaternion turnRotation = Quaternion.Euler(0f, turn, 0f);
-            
+
             rb.MoveRotation(rb.rotation * turnRotation);
         }
     }
 
-    // ==========================================
-    // DETECCIÓN DE COLISIONES / TRIGGERS
-    // ==========================================
+    // =====================================================
+    // Collision Detection
+    // =====================================================
 
     private void OnTriggerEnter(Collider other)
     {
-        // Pisar Mancha de Aceite
         if (other.CompareTag("Oil"))
         {
             if (fuelSystem != null)
@@ -117,6 +132,7 @@ public class KartMovement : MonoBehaviour
             }
 
             float duration = 2f;
+
             if (other.TryGetComponent<OilSlick>(out OilSlick oilScript))
             {
                 duration = oilScript.slowDuration;
@@ -126,9 +142,9 @@ public class KartMovement : MonoBehaviour
         }
     }
 
-    // ==========================================
-    // SISTEMA DE EFECTO DE ACEITE (OilSlick)
-    // ==========================================
+    // =====================================================
+    // Oil Slick Effect
+    // =====================================================
 
     public void ApplyOilSlick(float duration)
     {
@@ -144,15 +160,18 @@ public class KartMovement : MonoBehaviour
     {
         isSliding = true;
 
-        speed = baseSpeed * 0.5f; 
+        speed = baseSpeed * 0.5f;
         maxSpeed = baseMaxSpeed * 0.5f;
-        Debug.Log("¡Pisaste aceite! Velocidad reducida.");
+
+        Debug.Log("Oil slick detected. Speed reduced.");
 
         yield return new WaitForSeconds(duration);
 
         speed = baseSpeed;
         maxSpeed = baseMaxSpeed;
+
         isSliding = false;
-        Debug.Log("Control recuperado.");
+
+        Debug.Log("Movement restored.");
     }
 }
