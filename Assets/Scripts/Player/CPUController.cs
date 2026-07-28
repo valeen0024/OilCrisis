@@ -48,6 +48,17 @@ public class CPUController : MonoBehaviour
     [Tooltip("Initial lane of the CPU kart. Example: -1, 0, 1, 2.")]
     [SerializeField] private int startLane = 1;
 
+    [Header("Turbo / Boost Settings")]
+    [Tooltip("Speed multiplier during the boost.")]
+    [SerializeField] private float boostSpeedMultiplier = 2f;
+    [Tooltip("Duration of the boost in seconds.")]
+    [SerializeField] private float boostDuration = 2f;
+    [Tooltip("Chance per second (0.0 to 1.0) for the CPU to randomly activate the boost.")]
+    [SerializeField] private float boostChancePerSecond = 0.2f;
+
+    private bool hasUsedTurbo = false; // Single use control
+    private Animator animator;
+
     private int currentLane;
     private int targetLane;
     private float laneChangeTimer;
@@ -66,6 +77,8 @@ public class CPUController : MonoBehaviour
         startRotation = transform.rotation; 
 
         fuelSystem = GetComponent<KartFuelSystem>();
+
+        animator = GetComponentInChildren<Animator>();
 
         // Save the X position where this kart starts.
         startXPosition = transform.position.x;
@@ -100,6 +113,16 @@ public class CPUController : MonoBehaviour
             return;
 
         MoveCPU();
+
+        //Randomly evaluate if the CPU should use its single-use turbo
+        if (!hasUsedTurbo)
+        {
+            // Generates a random value. Scales with deltaTime so the chance is per second.
+            if (Random.value < boostChancePerSecond * Time.deltaTime)
+            {
+                ActivateTurbo();
+            }
+        }
 
         laneChangeTimer -= Time.deltaTime;
         if (laneChangeTimer <= 0f)
@@ -350,10 +373,43 @@ public class CPUController : MonoBehaviour
         // Clear oil effect
         isSliding = false;
 
+        hasUsedTurbo = false;
+
         // Restore fuel
         if (fuelSystem != null)
         {
             fuelSystem.currentFuel = fuelSystem.maxFuel;
         }
     }
+
+    private void ActivateTurbo()
+    {
+        hasUsedTurbo = true; // Blocks future uses
+
+        // Calls the animation trigger
+        if (animator != null)
+        {
+            animator.SetTrigger("Boost");
+        }
+
+        StartCoroutine(TurboRoutine());
+    }
+
+    private IEnumerator TurboRoutine()
+    {
+        currentForwardSpeed = cpuSpeed * boostSpeedMultiplier;
+        Debug.Log("CPU activated Boost randomly!");
+
+        yield return new WaitForSeconds(boostDuration);
+
+        // Restores speed only if not out of fuel
+        if (fuelSystem == null || !fuelSystem.IsOutOfFuel)
+        {
+            currentForwardSpeed = cpuSpeed;
+        }
+
+        Debug.Log("CPU Boost finished. Normal speed restored.");
+    }
+
+  
 }
