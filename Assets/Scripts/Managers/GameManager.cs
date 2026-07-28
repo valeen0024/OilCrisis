@@ -59,6 +59,18 @@ public class GameManager : MonoBehaviour
     {
         FindFuelBarrels();
 
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+        if (player != null && player.TryGetComponent<KartLaneController>(out var laneCtrl))
+        {
+            laneCtrl.canMove = false;
+        }
+
+        GameObject cpu = GameObject.FindGameObjectWithTag("CPU");
+        if (cpu != null && cpu.TryGetComponent<CPUController>(out var cpuCtrl))
+        {
+            cpuCtrl.canMove = false;
+        }
+
         StartCoroutine(ShowInstructionsRoutine());
     }
 

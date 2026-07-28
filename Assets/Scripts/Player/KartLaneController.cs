@@ -26,7 +26,17 @@ public class KartLaneController : MonoBehaviour
 
     [Header("Current State")]
     [Tooltip("Current lane index (-1, 0, 1, 2).")]
-    [SerializeField] private int currentLane = 0; 
+    [SerializeField] private int currentLane = 0;
+
+    [Header("Turbo / Boost Settings")]
+    [Tooltip("Speed multiplier during the boost.")]
+    [SerializeField] private float boostSpeedMultiplier = 2f;
+
+    [Tooltip("Duration of the boost in seconds.")]
+    [SerializeField] private float boostDuration = 2f;
+
+    private bool hasUsedTurbo = false; // Ensures it is a single-use boost
+    private Animator animator;         // Reference to trigger the animation
 
     private float currentForwardSpeed;
     private Vector3 targetPosition;
@@ -40,6 +50,9 @@ public class KartLaneController : MonoBehaviour
     private void Start()
     {
         fuelSystem = GetComponent<KartFuelSystem>();
+
+        //Finds the Animator on this object or its children.
+        animator = GetComponentInChildren<Animator>();
         currentForwardSpeed = baseForwardSpeed;
         targetPosition = transform.position;
 
@@ -50,6 +63,12 @@ public class KartLaneController : MonoBehaviour
     private void Update()
     {
         if (!canMove) return;
+
+        // Detect single-use boost input
+        if (Input.GetKeyDown(KeyCode.UpArrow) && !hasUsedTurbo)
+        {
+            ActivateTurbo();
+        }
 
         HandleLaneInput();
         UpdateSpeedBasedOnFuel();
@@ -127,6 +146,42 @@ public class KartLaneController : MonoBehaviour
 
             ApplyOilSlow(duration);
         }
+    }
+
+    // ==========================================
+    // TURBO / BOOST SYSTEM
+    // ==========================================
+    private void ActivateTurbo()
+    {
+        hasUsedTurbo = true; // Blocks future uses (Single use)
+
+        // Calls the exact "Boost" trigger defined in KartAnimator.controller
+        if (animator != null)
+        {
+            animator.SetTrigger("Boost");
+        }
+
+        // Starts the speed increase
+        StartCoroutine(TurboRoutine());
+    }
+
+    private IEnumerator TurboRoutine()
+    {
+        // Multiplies the current speed
+        currentForwardSpeed = baseForwardSpeed * boostSpeedMultiplier;
+        Debug.Log("Boost activated!");
+
+        // Waits for the assigned duration
+        yield return new WaitForSeconds(boostDuration);
+
+        // Once finished, restores the original speed 
+        // (Making sure it hasn't run out of fuel in the meantime)
+        if (fuelSystem == null || !fuelSystem.IsOutOfFuel)
+        {
+            currentForwardSpeed = baseForwardSpeed;
+        }
+
+        Debug.Log("Boost finished. Normal speed restored.");
     }
 
     /// <summary>
