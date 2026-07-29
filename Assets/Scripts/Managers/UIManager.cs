@@ -24,6 +24,12 @@ public class UIManager : MonoBehaviour
     [SerializeField] private GameObject imgJ2;
     [SerializeField] private GameObject imgTie;
 
+    [Header("Audio Settings")]
+    [SerializeField] private AudioSource audioSource;
+    [SerializeField] private AudioClip winSound;
+    [SerializeField] private AudioClip loseSound;
+    [SerializeField] private AudioClip tieSound;
+
     private bool winnerShown = false;
 
     private void Update()
@@ -57,6 +63,7 @@ public class UIManager : MonoBehaviour
             }
         }
     }
+
     private void UpdateDistance()
     {
         if (playerDistanceTracker != null && j1DistanceText != null)
@@ -85,15 +92,26 @@ public class UIManager : MonoBehaviour
         {
             case "Player":
                 imgJ1.SetActive(true);
+                PlaySound(winSound);
                 break;
 
             case "CPU":
                 imgJ2.SetActive(true);
+                PlaySound(loseSound);
                 break;
 
             case "Draw":
                 imgTie.SetActive(true);
+                PlaySound(tieSound);
                 break;
+        }
+    }
+
+    private void PlaySound(AudioClip clip)
+    {
+        if (audioSource != null && clip != null)
+        {
+            audioSource.PlayOneShot(clip);
         }
     }
 }
