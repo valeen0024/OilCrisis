@@ -59,9 +59,20 @@ public class TrafficLightManager : MonoBehaviour
         Debug.Log("RED");
         yield return new WaitForSeconds(stepInterval);
 
+        if (targetTurn == GameManager.GameState.PlayerTurn && playerKartController != null)
+        {
+            playerKartController.StartEngineSound();
+        }
+
+        else if (targetTurn == GameManager.GameState.CPUTurn && cpuController != null)
+        {
+            cpuController.StartEngineSound();
+        }
+
         UpdateLights(leftYellowSprite, rightYellowSprite);
         Debug.Log("YELLOW");
         yield return new WaitForSeconds(stepInterval);
+
 
         UpdateLights(leftGreenSprite, rightGreenSprite);
         Debug.Log("GREEN");

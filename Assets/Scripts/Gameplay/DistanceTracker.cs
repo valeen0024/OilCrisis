@@ -97,6 +97,8 @@ public class DistanceTracker : MonoBehaviour
                 if (TryGetComponent<KartMovement>(out var kartMovement))
                 {
                     kartMovement.enabled = false;
+
+                    laneController.StopEngineSound();
                 }
 
                 // Immediately eliminate any physical velocity or inertia.
@@ -117,6 +119,8 @@ public class DistanceTracker : MonoBehaviour
                 if (TryGetComponent<CPUController>(out var cpuController))
                 {
                     cpuController.canMove = false;
+
+                    cpuController.StopEngineSound();
                 }
 
                 //Stops its physics completely.

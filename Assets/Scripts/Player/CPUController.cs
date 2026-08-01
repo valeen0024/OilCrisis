@@ -56,6 +56,25 @@ public class CPUController : MonoBehaviour
     [Tooltip("Chance per second (0.0 to 1.0) for the CPU to randomly activate the boost.")]
     [SerializeField] private float boostChancePerSecond = 0.2f;
 
+    [Header("Audio Settings")]
+    [SerializeField] private AudioClip engineClip;
+    [SerializeField] private AudioClip turboClip;
+
+    [SerializeField] private float normalEngineVolume = 0.5f;
+    [SerializeField] private float normalEnginePitch = 1.0f;
+
+    [SerializeField] private float turboEngineVolume = 1.0f;
+    [SerializeField] private float turboEnginePitch = 1.5f;
+
+    [Tooltip("Duración del Fade In/Out general del motor")]
+    [SerializeField] private float engineFadeDuration = 1.0f;
+    [Tooltip("Duración para que el motor vuelva a la normalidad tras el turbo")]
+    [SerializeField] private float turboCooldownDuration = 0.5f;
+
+    private bool isFadingOut = false;
+    private AudioSource engineAudioSource;
+    private AudioSource turboAudioSource;
+
     private bool hasUsedTurbo = false; // Single use control
     private Animator animator;
 
@@ -92,6 +111,26 @@ public class CPUController : MonoBehaviour
 
         // Start the lane decision timer.
         laneChangeTimer = laneChangeInterval;
+
+        // Create the turbo sound player
+        if (engineClip != null)
+        {
+            engineAudioSource = gameObject.AddComponent<AudioSource>();
+            engineAudioSource.clip = engineClip;
+            engineAudioSource.loop = true;
+            engineAudioSource.volume = normalEngineVolume;
+            engineAudioSource.pitch = normalEnginePitch;
+            engineAudioSource.playOnAwake = false;
+        }
+
+        // Create the turbo player from code
+        if (turboClip != null)
+        {
+            turboAudioSource = gameObject.AddComponent<AudioSource>();
+            turboAudioSource.clip = turboClip;
+            turboAudioSource.loop = false;
+            turboAudioSource.playOnAwake = false;
+        }
     }
 
     private void Update()
@@ -392,6 +431,11 @@ public class CPUController : MonoBehaviour
             animator.SetTrigger("Boost");
         }
 
+        if (turboAudioSource != null)
+        {
+            turboAudioSource.Play();
+        }
+
         StartCoroutine(TurboRoutine());
     }
 
@@ -400,6 +444,14 @@ public class CPUController : MonoBehaviour
         currentForwardSpeed = cpuSpeed * boostSpeedMultiplier;
         Debug.Log("CPU activated Boost randomly!");
 
+
+        ////Increases the volume and intensifies the sound of the engine when the turbo is activated.
+        if (engineAudioSource != null)
+        {
+            engineAudioSource.volume = turboEngineVolume;
+            engineAudioSource.pitch = turboEnginePitch;
+        }
+
         yield return new WaitForSeconds(boostDuration);
 
         // Restores speed only if not out of fuel
@@ -407,9 +459,76 @@ public class CPUController : MonoBehaviour
         {
             currentForwardSpeed = cpuSpeed;
         }
+        //When the turbo stops, the engine sound returns to normal.
+        if (engineAudioSource != null)
+        {
+            float startVolume = engineAudioSource.volume;
+            float startPitch = engineAudioSource.pitch;
+            float currentTime = 0f;
+
+            while (currentTime < turboCooldownDuration)
+            {
+                currentTime += Time.deltaTime;
+                engineAudioSource.volume = Mathf.Lerp(startVolume, normalEngineVolume, currentTime / turboCooldownDuration);
+                engineAudioSource.pitch = Mathf.Lerp(startPitch, normalEnginePitch, currentTime / turboCooldownDuration);
+                yield return null;
+            }
+
+            engineAudioSource.volume = normalEngineVolume;
+            engineAudioSource.pitch = normalEnginePitch;
+        }
 
         Debug.Log("CPU Boost finished. Normal speed restored.");
     }
 
-  
+    public void StartEngineSound()
+    {
+        if (engineAudioSource != null && !engineAudioSource.isPlaying)
+        {
+            StartCoroutine(FadeInEngine());
+        }
+    }
+
+    private IEnumerator FadeInEngine()
+    {
+        engineAudioSource.volume = 0f;
+        engineAudioSource.Play();
+        float currentTime = 0f;
+
+        while (currentTime < engineFadeDuration)
+        {
+            currentTime += Time.deltaTime;
+            engineAudioSource.volume = Mathf.Lerp(0f, normalEngineVolume, currentTime / engineFadeDuration);
+            yield return null;
+        }
+        engineAudioSource.volume = normalEngineVolume;
+    }
+
+    public void StopEngineSound()
+    {
+        if (engineAudioSource != null && engineAudioSource.isPlaying && !isFadingOut)
+        {
+            StartCoroutine(FadeOutEngine());
+        }
+    }
+
+    private IEnumerator FadeOutEngine()
+    {
+        isFadingOut = true;
+        float startVolume = engineAudioSource.volume;
+        float currentTime = 0f;
+
+        while (currentTime < engineFadeDuration)
+        {
+            currentTime += Time.deltaTime;
+            engineAudioSource.volume = Mathf.Lerp(startVolume, 0f, currentTime / engineFadeDuration);
+            yield return null;
+        }
+
+        engineAudioSource.volume = 0f;
+        engineAudioSource.Stop();
+        isFadingOut = false;
+    }
+
+
 }
