@@ -1,90 +1,89 @@
-# Oil Crisis
+# Oil Crisis - Final Prototype
 
-> Unity 6 Project | Multimedia Engineering - UNAD
+## Course Information
 
-## Description
-
-Oil Crisis is a minigame inspired by *Mario Party 7*, developed in Unity for the **Video Game Programming** course at the **Universidad Nacional Abierta y a Distancia (UNAD)**.
-
-Players must travel the greatest possible distance by avoiding oil spills, collecting fuel cans, and using speed boosts. The player who reaches the longest distance wins the match.
+**Course:** Video Game Programming  
+**Course Code:** 213027A  
+**University:** Universidad Nacional Abierta y a Distancia (UNAD)
 
 ---
 
-## Team Members
+## Project Description
 
-- **Valentina Preciado Nuñez**
-- **Carlos Andrés Ochoa Daza**
-- **Iván Andrey Castellanos Rojas**
-- **Liliana Marcela Daza**
+Oil Crisis is a functional prototype inspired by the Mario Party 7 minigame. Players race along a four-lane road while managing fuel, avoiding oil spills, collecting fuel cans, and trying to reach the finish line first.
+
+The prototype was developed in Unity as part of the final project for the Video Game Programming course.
 
 ---
 
 ## Technologies
 
-- Unity 6 (6000.3.19f1)
+- Unity 6000.3.19f1
 - C#
-- Git & GitHub
-- GitHub Desktop
+- Visual Studio 2022
+- GitHub
 - Figma
-- Blender
-- Adobe suite
-- Asset Store
 
 ---
 
-## Project Structure
+## Team Members
 
-```
-Assets/
-├── Animations
-├── Audio
-├── Materials
-├── Models
-├── Prefabs
-├── Scenes
-├── Scripts
-├── Sprites
-├── UI
-└── VFX
-```
+- Valentina Preciado Núñez
+- Carlos Andrés Rodríguez
+- Iván Andrés Ramírez
+- Liliana Gómez
 
 ---
 
-## Workflow
+## Team Responsibilities
 
-Each team member works on an individual Git branch.
+### Valentina Preciado Núñez
+- UI implementation
+- Scene navigation
+- HUD
+- Main menu
+- Character selection
+- Results screen
+- Background music integration
 
-Before starting any task:
+### Carlos Andrés Rodríguez
+- Player movement
+- Camera system
+- Vehicle controller
+- Character animations
 
-1. Fetch and Pull the latest changes.
-2. Work on the assigned branch.
-3. Commit using a descriptive message.
-4. Push the completed work to GitHub.
+### Iván Andrés Ramírez
+- GameManager
+- Game flow
+- Finish conditions
+- Winner detection
+- Restart system
 
----
-
-## Current Status
-
-- Repository configured.
-- Unity project created.
-- Folder structure organized.
-- Assets imported.
-- Initial scenes created.
-- UI under development.
-
-Gameplay programming will be implemented during the next development stage.
-
----
-
-## Getting Started
-
-1. Clone the repository.
-2. Open it using **Unity 6 (6000.3.19f1)**.
-3. Wait for Unity to import all assets.
-4. Open the desired scene from the **Scenes** folder.
+### Liliana Gómez
+- Fuel system
+- Interactive objects
+- Fuel cans
+- Oil spills
+- Basic CPU opponent
 
 ---
 
-## Academic Project
+## Gameplay Features
 
-Developed for the **Video Game Programming** course of the **Multimedia Engineering Program** at **Universidad Nacional Abierta y a Distancia (UNAD)**.
+- Main menu
+- Character selection
+- Four-lane movement
+- Fuel system
+- Fuel cans
+- Oil spills
+- Distance counter
+- Win condition
+- Restart system
+- Background music
+- Basic AI opponent
+
+---
+
+## Repository
+
+Final version submitted for Stage 5.
