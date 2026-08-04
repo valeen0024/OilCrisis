@@ -160,6 +160,7 @@ public class GameManager : MonoBehaviour
             if (player.TryGetComponent<KartLaneController>(out var laneCtrl))
             {
                 laneCtrl.canMove = false;
+                laneCtrl.StopEngineSound();
             }
 
             // Disable physics-based movement
@@ -179,9 +180,9 @@ public class GameManager : MonoBehaviour
 
                 rb.isKinematic = true;
             }
-        }   // <-- ESTA LLAVE TE FALTABA
+        }
 
-        Debug.Log("¡Turno terminado! El auto se ha detenido. Esperando 3 segundos...");
+        Debug.Log("¡Turn over! The car has stopped. Waiting 3 seconds...");
 
         // 3-second wait before changing turns
         yield return new WaitForSeconds(3f);
@@ -190,7 +191,7 @@ public class GameManager : MonoBehaviour
         if (player != null)
         {
             player.SetActive(false);
-            Debug.Log("Kart del jugador oculto.");
+            Debug.Log("Hidden player's kart.");
         }
 
         // Point the camera at the CPU
@@ -200,7 +201,7 @@ public class GameManager : MonoBehaviour
         if (cam != null && cpu != null)
         {
             cam.SetTarget(cpu.transform);
-            Debug.Log("Cámara cambiando al kart de la CPU.");
+            Debug.Log("Camera switching to the CPU kart.");
         }
 
         // Reset the fuel barrels
@@ -216,6 +217,13 @@ public class GameManager : MonoBehaviour
     public void EndCPUTurn()
     {
         if (gameState != GameState.CPUTurn) return;
+
+        GameObject cpu = GameObject.FindGameObjectWithTag("CPU");
+        if (cpu != null && cpu.TryGetComponent<CPUController>(out var cpuCtrl))
+        {
+            cpuCtrl.StopEngineSound();
+        }
+
         Debug.Log("CPU turn finished.");
         FinishGame();
     }

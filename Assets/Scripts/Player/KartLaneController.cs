@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 
@@ -42,6 +43,32 @@ public class KartLaneController : MonoBehaviour
     [Tooltip("Duration of the boost in seconds.")]
     [SerializeField] private float boostDuration = 2f;
 
+    [Header("Audio Settings")]
+    [Tooltip("Rngine sound.")]
+    [SerializeField] private AudioClip engineClip;
+    [Tooltip("Turbo sound.")]
+    [SerializeField] private AudioClip turboClip;
+
+    [Tooltip("Normal engine volume and tone.")]
+    [SerializeField] private float normalEngineVolume = 0.5f;
+    [SerializeField] private float normalEnginePitch = 1.0f;
+
+    [Tooltip("VEngine volume and tone when the turbo is active.")]
+    [SerializeField] private float turboEngineVolume = 1.0f;
+    [SerializeField] private float turboEnginePitch = 1.5f;
+
+    [Tooltip("Duration of the Fade In / Fade Out effect in seconds.")]
+    [SerializeField] private float engineFadeDuration = 1.0f;
+
+    [Tooltip("Duration in seconds for the engine sound to return to normal after the turbo.")]
+    [SerializeField] private float turboCooldownDuration = 0.5f;
+
+    private bool isFadingOut = false;
+
+
+    private AudioSource engineAudioSource;
+    private AudioSource turboAudioSource;
+
     private bool hasUsedTurbo = false; // Ensures it is a single-use boost
     private Animator animator;         // Reference to trigger the animation
 
@@ -68,7 +95,30 @@ public class KartLaneController : MonoBehaviour
 
         // Capture the initial X position as the origin for the reference lane (0)
         startXPosition = transform.position.x;
+
+
+        //Create the Engine AudioSource
+        if (engineClip != null)
+        {
+            engineAudioSource = gameObject.AddComponent<AudioSource>();
+            engineAudioSource.clip = engineClip;
+            engineAudioSource.loop = true;
+            engineAudioSource.volume = normalEngineVolume;
+            engineAudioSource.pitch = normalEnginePitch;
+            engineAudioSource.playOnAwake = false;
+        }
+
+        //Create the Turbo AudioSource
+        if (turboClip != null)
+        {
+            turboAudioSource = gameObject.AddComponent<AudioSource>();
+            turboAudioSource.clip = turboClip;
+            turboAudioSource.loop = false; 
+            turboAudioSource.playOnAwake = false;
+        }
     }
+
+
 
     private void Update()
     {
@@ -209,9 +259,76 @@ public class KartLaneController : MonoBehaviour
         {
             animator.SetTrigger("Boost");
         }
+        //Activate the turbo sound.
+        if (turboAudioSource != null)
+        {
+            turboAudioSource.Play();
+        }
 
         // Starts the speed increase
         StartCoroutine(TurboRoutine());
+    }
+
+    public void StartEngineSound()
+    {
+        if (engineAudioSource != null && !engineAudioSource.isPlaying)
+        {
+            StartCoroutine(FadeInEngine());
+        }
+    }
+
+    //Fade-in effect at the start of the engine sound.
+    private IEnumerator FadeInEngine()
+    {
+        
+        engineAudioSource.volume = 0f;
+       
+        engineAudioSource.Play();
+
+        float currentTime = 0f;
+
+        
+        while (currentTime < engineFadeDuration)
+        {
+            currentTime += Time.deltaTime;
+          
+            engineAudioSource.volume = Mathf.Lerp(0f, normalEngineVolume, currentTime / engineFadeDuration);
+            yield return null; // Esperamos al siguiente frame
+        }
+
+      
+        engineAudioSource.volume = normalEngineVolume;
+    }
+    //Stops the engine sound
+    public void StopEngineSound()
+    {
+        
+        if (engineAudioSource != null && engineAudioSource.isPlaying && !isFadingOut)
+        {
+            StartCoroutine(FadeOutEngine());
+        }
+    }
+
+    // Gradual fade out of the engine sound when the kart stops.
+    private IEnumerator FadeOutEngine()
+    {
+        isFadingOut = true;
+
+        
+        float startVolume = engineAudioSource.volume;
+        float currentTime = 0f;
+
+        while (currentTime < engineFadeDuration)
+        {
+            currentTime += Time.deltaTime;
+            engineAudioSource.volume = Mathf.Lerp(startVolume, 0f, currentTime / engineFadeDuration);
+            yield return null;
+        }
+
+        
+        engineAudioSource.volume = 0f;
+        engineAudioSource.Stop();
+        isFadingOut = false;
     }
 
     private IEnumerator TurboRoutine()
@@ -219,8 +336,47 @@ public class KartLaneController : MonoBehaviour
         isBoosting = true;
         Debug.Log("Boost activated!");
 
+        //Increases the volume and intensifies the sound of the engine when the turbo is activated.
+        if (engineAudioSource != null)
+        {
+            engineAudioSource.volume = turboEngineVolume;
+            engineAudioSource.pitch = turboEnginePitch;
+        }
+
         // Waits for the assigned duration
         yield return new WaitForSeconds(boostDuration);
+
+        // Once finished, restores the original speed 
+        // (Making sure it hasn't run out of fuel in the meantime)
+        if (fuelSystem == null || !fuelSystem.IsOutOfFuel)
+        {
+            currentForwardSpeed = baseForwardSpeed;
+        }
+
+        //When the turbo stops, the engine sound returns to normal.
+        if (engineAudioSource != null)
+        {
+            float startVolume = engineAudioSource.volume;
+            float startPitch = engineAudioSource.pitch;
+            float currentTime = 0f;
+
+            
+            while (currentTime < turboCooldownDuration)
+            {
+                currentTime += Time.deltaTime;
+
+                engineAudioSource.volume = Mathf.Lerp(startVolume, normalEngineVolume, currentTime / turboCooldownDuration);
+                engineAudioSource.pitch = Mathf.Lerp(startPitch, normalEnginePitch, currentTime / turboCooldownDuration);
+
+                yield return null; 
+            }
+
+            
+            engineAudioSource.volume = normalEngineVolume;
+            engineAudioSource.pitch = normalEnginePitch;
+
+            
+        }
 
         isBoosting = false;
         Debug.Log("Boost finished. Normal speed restored.");
