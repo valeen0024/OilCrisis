@@ -10,9 +10,16 @@ public class KartLaneController : MonoBehaviour
     
     [Tooltip("Speed at which the kart transitions horizontally between lanes.")]
     [SerializeField] private float laneChangeSpeed = 15f;
-    
-    [Tooltip("Base forward speed of the kart.")]
-    [SerializeField] private float baseForwardSpeed = 6f;
+
+    [Header("Speed & Inertia Settings")]
+    [Tooltip("Target max forward speed during normal driving.")]
+    [SerializeField] private float baseForwardSpeed = 15f;
+
+    [Tooltip("How fast the vehicle accelerates up to its target speed.")]
+    [SerializeField] private float acceleration = 12f;
+
+    [Tooltip("How fast the vehicle loses speed when releasing gas or idling.")]
+    [SerializeField] private float friction = 2f;
 
     [Header("Lane Limits (4 Lanes Setup)")]
     [Tooltip("Minimum lane index (most left lane).")]
@@ -31,7 +38,7 @@ public class KartLaneController : MonoBehaviour
 
     [Header("Turbo / Boost Settings")]
     [Tooltip("Speed multiplier during the boost.")]
-    [SerializeField] private float boostSpeedMultiplier = 2f;
+    [SerializeField] private float boostSpeedMultiplier = 1.8f;
 
     [Tooltip("Duration of the boost in seconds.")]
     [SerializeField] private float boostDuration = 2f;
@@ -65,11 +72,12 @@ public class KartLaneController : MonoBehaviour
     private bool hasUsedTurbo = false; // Ensures it is a single-use boost
     private Animator animator;         // Reference to trigger the animation
 
-    private float currentForwardSpeed;
+    public float currentForwardSpeed;  // Current actual speed (interpolated)
+    private float targetForwardSpeed;   // Desired speed calculated by state & input
     private Vector3 targetPosition;
     private KartFuelSystem fuelSystem;
     private bool isSliding = false;
-    public KartLaneController kartController;
+    private bool isBoosting = false;
 
     // Stores the initial X coordinate of the kart set in the Scene
     private float startXPosition; 
@@ -78,9 +86,11 @@ public class KartLaneController : MonoBehaviour
     {
         fuelSystem = GetComponent<KartFuelSystem>();
 
-        //Finds the Animator on this object or its children.
+        // Finds the Animator on this object or its children.
         animator = GetComponentInChildren<Animator>();
-        currentForwardSpeed = baseForwardSpeed;
+        
+        targetForwardSpeed = 0f;
+        currentForwardSpeed = 0f;
         targetPosition = transform.position;
 
         // Capture the initial X position as the origin for the reference lane (0)
@@ -114,14 +124,15 @@ public class KartLaneController : MonoBehaviour
     {
         if (!canMove) return;
 
-        // Detect single-use boost input
-        if (Input.GetKeyDown(KeyCode.UpArrow) && !hasUsedTurbo)
+        // Detect single-use boost input (Key Code 'W' or 'Up Arrow')
+        if ((Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.W)) && !hasUsedTurbo)
         {
             ActivateTurbo();
         }
 
         HandleLaneInput();
-        UpdateSpeedBasedOnFuel();
+        CalculateTargetSpeed();
+        ApplyInertiaAndSpeed();
         MoveKart();
     }
 
@@ -145,13 +156,51 @@ public class KartLaneController : MonoBehaviour
     }
 
     /// <summary>
-    /// Decelerates the kart smoothly to a complete stop if it runs out of fuel.
+    /// Determines the desired target speed based on fuel, oil slicks, and turbo state.
     /// </summary>
-    private void UpdateSpeedBasedOnFuel()
+    private void CalculateTargetSpeed()
     {
+        // 1. Out of fuel -> Stop completely
         if (fuelSystem != null && fuelSystem.IsOutOfFuel)
         {
-            currentForwardSpeed = Mathf.MoveTowards(currentForwardSpeed, 0f, Time.deltaTime * 3f);
+            targetForwardSpeed = 0f;
+            return;
+        }
+
+        // 2. Currently in Boost state
+        if (isBoosting)
+        {
+            targetForwardSpeed = baseForwardSpeed * boostSpeedMultiplier;
+            return;
+        }
+
+        // 3. Currently slipping on Oil
+        if (isSliding)
+        {
+            targetForwardSpeed = baseForwardSpeed * 0.5f;
+            return;
+        }
+
+        // 4. Normal movement target
+        targetForwardSpeed = baseForwardSpeed;
+    }
+
+    /// <summary>
+    /// Smoothly transitions currentForwardSpeed toward targetForwardSpeed using acceleration and friction.
+    /// </summary>
+    private void ApplyInertiaAndSpeed()
+    {
+        if (currentForwardSpeed < targetForwardSpeed)
+        {
+            // Accelerate smoothly toward the target speed
+            currentForwardSpeed += acceleration * Time.deltaTime;
+            currentForwardSpeed = Mathf.Min(currentForwardSpeed, targetForwardSpeed);
+        }
+        else if (currentForwardSpeed > targetForwardSpeed)
+        {
+            // Decelerate/apply friction when slowing down or running out of fuel
+            currentForwardSpeed -= friction * 5f * Time.deltaTime;
+            currentForwardSpeed = Mathf.Max(currentForwardSpeed, targetForwardSpeed);
         }
     }
 
@@ -168,7 +217,7 @@ public class KartLaneController : MonoBehaviour
         // MoveTowards snaps perfectly to targetX without floating-point offset drift
         float newX = Mathf.MoveTowards(currentPos.x, targetX, laneChangeSpeed * Time.deltaTime);
         
-        // Continuous forward progress
+        // Continuous forward progress using smoothed inertia speed
         float newZ = currentPos.z + (currentForwardSpeed * Time.deltaTime);
 
         // Apply calculated position
@@ -284,8 +333,7 @@ public class KartLaneController : MonoBehaviour
 
     private IEnumerator TurboRoutine()
     {
-        // Multiplies the current speed
-        currentForwardSpeed = baseForwardSpeed * boostSpeedMultiplier;
+        isBoosting = true;
         Debug.Log("Boost activated!");
 
         //Increases the volume and intensifies the sound of the engine when the turbo is activated.
@@ -330,6 +378,7 @@ public class KartLaneController : MonoBehaviour
             
         }
 
+        isBoosting = false;
         Debug.Log("Boost finished. Normal speed restored.");
     }
 
@@ -350,15 +399,9 @@ public class KartLaneController : MonoBehaviour
     private IEnumerator OilSlowRoutine(float duration)
     {
         isSliding = true;
-        currentForwardSpeed = baseForwardSpeed * 0.5f;
         Debug.Log("Slipped on oil! Speed reduced.");
 
         yield return new WaitForSeconds(duration);
-
-        if (fuelSystem == null || !fuelSystem.IsOutOfFuel)
-        {
-            currentForwardSpeed = baseForwardSpeed;
-        }
 
         isSliding = false;
         Debug.Log("Normal speed recovered.");

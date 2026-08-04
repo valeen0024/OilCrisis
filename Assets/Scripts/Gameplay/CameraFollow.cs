@@ -8,6 +8,13 @@ public class CameraFollow : MonoBehaviour
     [Header("Follow Settings")]
     [SerializeField] private float followSpeed = 8f;
 
+    [Header("Dynamic FOV")]
+    [SerializeField] private Camera cam;
+    [SerializeField] private float minFOV = 45f;
+    [SerializeField] private float maxFOV = 60f;
+    [SerializeField] private float fovChangeSpeed = 5f;
+    [SerializeField] private float maxKartSpeed = 15f;
+
     // Fixed camera values
     private float fixedX;
     private float fixedY;
@@ -20,6 +27,12 @@ public class CameraFollow : MonoBehaviour
     {
         if (target == null)
             return;
+
+        // Automatically get the Camera component
+        if (cam == null)
+        {
+            cam = GetComponent<Camera>();
+        }
 
         // Store the original camera transform
         fixedX = transform.position.x;
@@ -37,6 +50,7 @@ public class CameraFollow : MonoBehaviour
         if (target == null)
             return;
 
+        // Keep X and Y fixed while following only the Z position
         Vector3 desiredPosition = new Vector3(
             fixedX,
             fixedY,
@@ -51,6 +65,31 @@ public class CameraFollow : MonoBehaviour
 
         // Keep the original camera rotation
         transform.rotation = fixedRotation;
+
+        // Dynamic Field of View based on kart speed
+        if (cam != null)
+        {
+            KartLaneController laneController = target.GetComponent<KartLaneController>();
+
+            if (laneController != null)
+            {
+                float speedRatio = Mathf.Clamp01(
+                    laneController.currentForwardSpeed / maxKartSpeed
+                );
+
+                float targetFOV = Mathf.Lerp(
+                    minFOV,
+                    maxFOV,
+                    speedRatio
+                );
+
+                cam.fieldOfView = Mathf.Lerp(
+                    cam.fieldOfView,
+                    targetFOV,
+                    fovChangeSpeed * Time.deltaTime
+                );
+            }
+        }
     }
 
     public void SetTarget(Transform newTarget)
@@ -60,10 +99,9 @@ public class CameraFollow : MonoBehaviour
         if (target == null)
             return;
 
-        Debug.Log("Camera target changed to: " + target.name);
-
         SnapToTarget();
     }
+
     private void SnapToTarget()
     {
         transform.position = new Vector3(
