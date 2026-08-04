@@ -174,10 +174,14 @@ public class KartFuelSystem : MonoBehaviour
             if (CompareTag("Player"))
             {
                 GameManager.Instance.PlayerOutOfFuel();
+
+                kartController.StopEngineSound();
             }
             else if (CompareTag("CPU"))
             {
                 GameManager.Instance.CPUOutOfFuel();
+
+                cpuController.StopEngineSound();
             }
         }
     }
