@@ -1,6 +1,5 @@
 using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.tvOS;
 
 public class DestroyAfterDistance : MonoBehaviour
 {
